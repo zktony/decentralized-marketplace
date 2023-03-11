@@ -283,7 +283,28 @@ parameter_types! {
 	pub const MetadataDepositPerByte: Balance = 1;
 }
 
-impl pallet_assets::Config for Runtime {
+impl pallet_assets::Config<pallet_assets::Instance1> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type AssetId = u128;
+	type AssetIdParameter = codec::Compact<u128>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = AssetDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type CallbackHandle = ();
+	type WeightInfo = ();
+}
+
+impl pallet_assets::Config<pallet_assets::Instance2> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type RemoveItemsLimit = ConstU32<1000>;
@@ -347,14 +368,14 @@ parameter_types! {
 
 impl marketplace::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type TokenHandler = Assets;
+	type TokenHandler = DonationTokens;
 	type Currency = Balances;
 	type DonationPalletId = DonationPalletId;
 }
 
 impl donation_handler::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
-	type TokenHandler = Assets;
+	type TokenHandler = DonationTokens;
 	type Currency = Balances;
 	type DonationPalletId = DonationPalletId;
 }
@@ -375,7 +396,8 @@ construct_runtime!(
 		Balances: pallet_balances,
 		TransactionPayment: pallet_transaction_payment,
 		Sudo: pallet_sudo,
-		Assets: pallet_assets, //TODO: Exclude calls
+		Assets: pallet_assets::<Instance1>,
+		DonationTokens: pallet_assets::<Instance2>,// TODO: Exclude calls
 		Identity: pallet_identity,
 		ParticipantHandler: participant_handler,
 		DonationHandler: donation_handler,

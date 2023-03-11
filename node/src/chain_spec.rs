@@ -152,6 +152,7 @@ fn testnet_genesis(
 			key: Some(root_key),
 		},
 		assets: Default::default(),
+		donation_tokens: Default::default(),
 		transaction_payment: Default::default(),
 	}
 }
