@@ -12,14 +12,13 @@ pub mod xcm_config;
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
-
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -29,7 +28,7 @@ use frame_support::{
 	construct_runtime,
 	dispatch::DispatchClass,
 	parameter_types,
-	traits::{ConstU32, ConstU64, ConstU8, Everything},
+	traits::{AsEnsureOriginWithArg, ConstU32, ConstU64, ConstU8, Everything},
 	weights::{
 		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
 		WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -38,7 +37,7 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	EnsureRoot, EnsureSigned,
 };
 pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
@@ -53,11 +52,9 @@ use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 
 // XCM Imports
+use crate::xcm_config::LocationToAccountId;
 use xcm::latest::prelude::BodyId;
 use xcm_executor::XcmExecutor;
-
-/// Import the template pallet.
-pub use pallet_template;
 
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = MultiSignature;
@@ -136,7 +133,7 @@ impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLIUNIT:
-		// in our template, we map to 1/10 of that, or 1/10 MILLIUNIT
+		// in our xcm-helper, we map to 1/10 of that, or 1/10 MILLIUNIT
 		let p = MILLIUNIT / 10;
 		let q = 100 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
 		smallvec![WeightToFeeCoefficient {
@@ -173,8 +170,8 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("template-parachain"),
-	impl_name: create_runtime_str!("template-parachain"),
+	spec_name: create_runtime_str!("xcm-helper-parachain"),
+	impl_name: create_runtime_str!("xcm-helper-parachain"),
 	authoring_version: 1,
 	spec_version: 1,
 	impl_version: 0,
@@ -448,9 +445,171 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = ();
 }
 
-/// Configure the pallet template in pallets/template.
-impl pallet_template::Config for Runtime {
+parameter_types! {
+	pub const AssetDeposit: Balance = 100;
+	pub const ApprovalDeposit: Balance = 1;
+	pub const StringLimit: u32 = 50;
+	pub const MetadataDepositBase: Balance = 10;
+	pub const MetadataDepositPerByte: Balance = 1;
+}
+
+impl pallet_assets::Config<pallet_assets::Instance1> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type AssetId = u128;
+	type AssetIdParameter = codec::Compact<u128>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = AssetDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type CallbackHandle = ();
+	type WeightInfo = ();
+}
+
+impl pallet_assets::Config<pallet_assets::Instance2> for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Balance = Balance;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type AssetId = u128;
+	type AssetIdParameter = codec::Compact<u128>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type AssetAccountDeposit = AssetDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type CallbackHandle = ();
+	type WeightInfo = ();
+}
+
+parameter_types! {
+	pub const BasicDeposit: Balance = 1;   // TODO: Update these values
+	pub const FieldDeposit: Balance = 1;
+	pub const SubAccountDeposit: Balance = 1;
+	pub const MaxSubAccounts: u32 = 100;
+	pub const MaxAdditionalFields: u32 = 100;
+	pub const MaxRegistrars: u32 = 20;
+}
+
+impl pallet_identity::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type BasicDeposit = BasicDeposit;
+	type FieldDeposit = FieldDeposit;
+	type SubAccountDeposit = SubAccountDeposit;
+	type MaxSubAccounts = MaxSubAccounts;
+	type MaxAdditionalFields = MaxAdditionalFields;
+	type MaxRegistrars = MaxRegistrars;
+	type Slashed = ();
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type RegistrarOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = pallet_identity::weights::SubstrateWeight<Runtime>;
+}
+
+// Our Pallets
+
+parameter_types! {
+	pub const NgoStakingAmount: u128 = 1000_000_000_000_000;
+	pub const SellerStakingAmount: u128 = 1000_000_000_000_000;
+	pub const AssetHandlerPalletId: PalletId = PalletId(*b"XcmHandl");
+}
+
+impl participant_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type NgoStakingAmount = NgoStakingAmount;
+	type SellerStakingAmount = SellerStakingAmount;
+	type Currency = Balances;
+	type GovernanceOrigin = EnsureRoot<AccountId>;
+}
+
+parameter_types! {
+	pub const DonationPalletId: PalletId = PalletId(*b"py/nopls");
+}
+
+impl marketplace::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type TokenHandler = PurposeBasedTokens;
+	type Currency = Balances;
+	type DonationPalletId = DonationPalletId;
+}
+
+impl donation_handler::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type TokenHandler = PurposeBasedTokens;
+	type Currency = Balances;
+	type DonationPalletId = DonationPalletId;
+}
+
+parameter_types! {
+	pub ParachainId: u32 = ParachainInfo::get().into();
+}
+
+impl xcm_helper::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AccountIdConvert = LocationToAccountId;
+	type Currency = Balances;
+	type AssetManager = Assets;
+	type ParachainId = ParachainId;
+}
+
+// Impl parallel Finance Pallet
+parameter_types! {
+	pub const SwapPalletId: PalletId = PalletId(*b"sw/accnt");
+	pub DefaultLpFee: Permill = Permill::from_rational(30u32, 10000u32);
+	pub OneAccount: AccountId = AccountId::from([1u8; 32]);
+	pub DefaultProtocolFee: Permill = Permill::from_rational(0u32, 10000u32);
+	pub const MinimumLiquidity: u128 = 1_000u128;
+	pub const MaxLengthRoute: u8 = 10;
+}
+
+impl pallet_amm::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Assets = AssetHandler;
+	type PalletId = SwapPalletId;
+	type LockAccountId = OneAccount;
+	type CreatePoolOrigin = EnsureRoot<Self::AccountId>;
+	type ProtocolFeeUpdateOrigin = EnsureRoot<Self::AccountId>;
+	type LpFee = DefaultLpFee;
+	type MinimumLiquidity = MinimumLiquidity;
+	type MaxLengthRoute = MaxLengthRoute;
+	type GetNativeCurrencyId = NativeCurrencyId;
+}
+
+parameter_types! {
+	pub const RouterPalletId: PalletId = PalletId(*b"rw/accnt");
+}
+
+impl router::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type PalletId = RouterPalletId;
+	type AMM = Swap;
+	type MaxLengthRoute = MaxLengthRoute;
+	type GetNativeCurrencyId = NativeCurrencyId;
+	type Assets = AssetHandler;
+}
+
+parameter_types! {
+	pub const NativeCurrencyId: u128 = 0;
+}
+
+impl asset_manager::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type MultiCurrency = Assets;
+	type NativeCurrencyId = NativeCurrencyId;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -485,8 +644,19 @@ construct_runtime!(
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
 
-		// Template
-		TemplatePallet: pallet_template::{Pallet, Call, Storage, Event<T>}  = 40,
+		// Imported Pallets
+		Assets: pallet_assets::<Instance1>::{Pallet, Call, Event<T>, Config<T>} = 34,
+		PurposeBasedTokens: pallet_assets::<Instance2>::{Pallet, Call, Event<T>, Config<T>} = 35,
+		Identity: pallet_identity::{Pallet, Call, Event<T>} = 36,
+
+		// Custom Pallets
+		ParticipantHandler: participant_handler::{Pallet, Call, Event<T>} = 37,
+		DonationHandler: donation_handler::{Pallet, Call, Event<T>} = 38,
+		Marketplace: marketplace::{Pallet, Call, Event<T>} = 39,
+		XcmHelper: xcm_helper::{Pallet, Call, Event<T>} = 40,
+		AssetHandler: asset_manager::pallet::{Pallet, Storage, Event<T>} = 41,
+		Swap: pallet_amm::pallet::{Pallet, Call, Storage, Event<T>} = 42,
+		Router: router::pallet::{Pallet, Call, Storage, Event<T>} = 43
 	}
 );
 

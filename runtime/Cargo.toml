@@ -22,7 +22,16 @@ scale-info = { version = "2.3.1", default-features = false, features = ["derive"
 smallvec = "1.10.0"
 
 # Local
-pallet-template = { path = "../pallets/template", default-features = false }
+xcm-helper = { path = "../pallets/xcm-helper", default-features = false }
+donation-handler = { path = "../pallets/donation-handler", default-features = false }
+marketplace = { path = "../pallets/marketplace", default-features = false }
+participant-handler = { path = "../pallets/participant-handler", default-features = false }
+asset-manager = { path = "../pallets/asset-manager", default-features = false }
+
+# Paraller Finance AMM Pallets
+pallet-amm = { path = "../pallets/swap", default-features = false }
+support = { path = "../pallets/support", default-features = false }
+router = { path = "../pallets/router", default-features = false }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-features = false, optional = true, "branch" = "polkadot-v0.9.37" }
@@ -51,6 +60,9 @@ sp-session = { git = "https://github.com/paritytech/substrate", default-features
 sp-std = { git = "https://github.com/paritytech/substrate", default-features = false, "branch" = "polkadot-v0.9.37" }
 sp-transaction-pool = { git = "https://github.com/paritytech/substrate", default-features = false, "branch" = "polkadot-v0.9.37" }
 sp-version = { git = "https://github.com/paritytech/substrate", default-features = false, "branch" = "polkadot-v0.9.37" }
+pallet-assets = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+pallet-identity = { default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37" }
+
 
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot", default-features = false, branch = "release-v0.9.37" }
@@ -99,7 +111,7 @@ std = [
 	"pallet-collator-selection/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
-	"pallet-template/std",
+	"xcm-helper/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
@@ -121,6 +133,18 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
+	"xcm-helper/std",
+	"donation-handler/std",
+	"marketplace/std",
+	"participant-handler/std",
+    "xcm-helper/std",
+	"pallet-assets/std",
+	"pallet-identity/std",
+	# Paraller Finance AMM Pallets
+	"pallet-amm/std",
+	"support/std",
+	"router/std",
+	"asset-manager/std"
 ]
 
 runtime-benchmarks = [
@@ -131,7 +155,6 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
-	"pallet-template/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
@@ -155,7 +178,6 @@ try-runtime = [
 	"pallet-collator-selection/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
-	"pallet-template/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
 	"pallet-xcm/try-runtime",
